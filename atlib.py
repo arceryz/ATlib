@@ -25,6 +25,11 @@ class AT_Device:
         """ Open AT device. Nothing else."""
         self.serial = Serial(path, timeout=0.5)
         print("AT serial device opened at {:s}".format(path))
+
+    
+    def __del__(self):
+        """ Close AT device. """
+        self.serial.close()
        
 
     def write(self, cmd):
