@@ -23,6 +23,7 @@ This class provides higher level features such as
 - Unlocking the device sim using pin.
 - Sending text messages.
 - Reading text messages (by category unread, all, read, etc).
+
 This is still a w.i.p class for my personal use cases. Might be extended with call support later on.
 
 # Contributing
