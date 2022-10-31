@@ -21,9 +21,9 @@ class AT_Device:
     For higher level GSM features, use GSM_Device."""
 
 
-    def __init__(self, path):
+    def __init__(self, path, baudrate=9600):
         """ Open AT device. Nothing else."""
-        self.serial = Serial(path, timeout=0.5)
+        self.serial = Serial(path, timeout=0.5, baudrate=baudrate)
         print("AT serial device opened at {:s}".format(path))
 
     
