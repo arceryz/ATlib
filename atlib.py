@@ -13,6 +13,14 @@ from serial import *
 from time import *
 
 
+class SMS_Group:
+    UNREAD = "REC UNREAD"
+    READ = "REC READ"
+    STORED_UNSENT = "STO UNSENT"
+    STORED_SENT = "STO SENT"
+    ALL = "ALL"
+
+
 class Status:
     OK = "OK"
     PROMPT = "> "
@@ -192,12 +200,10 @@ class GSM_Device(AT_Device):
         return status
 
 
-    def receive_sms(self, category="REC UNREAD"):
-        """ Receive text messages. The category can be one of several AT modes: REC UNREAD (default), REC READ, STO UNSENT, STO SENT, ALL.
-        Not all modes may work for a given device.
-        """
+    def receive_sms(self, group=SMS_Group.UNREAD):
+        """ Receive text messages. See types of message from SMS_Group class. """
         # Read unread. After reading they will not show up here anymore!
-        print("Scanning {:s} messages...".format(category))
+        print("Scanning {:s} messages...".format(group))
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
         if status != Status.OK: return status
@@ -205,7 +211,7 @@ class GSM_Device(AT_Device):
         # Read the messages.
         self.write("AT+CMGL=\"{:s}\"".format(category))
         resp = self.read()
-        if resp[-1] != "OK": return resp[-1]
+        if resp[-1] != Status.OK: return resp[-1]
 
         # TotalElements = 2 + 2 * TotalMessages.
         # First and last elements are echo/result.
@@ -221,7 +227,7 @@ class GSM_Device(AT_Device):
             el = [sender, date, time, message]
             table.append(el)
 
-        print("Received {:d} messages.".format(len(table)))
+        print("Received {:d} messages".format(len(table)))
         return table
 
 
@@ -236,3 +242,16 @@ class GSM_Device(AT_Device):
             sec += delay
             if sec >= timeout:
                 return []
+
+
+    def delete_sms(index):
+        """ Delete sms at index from given group. 
+        Indices are 0-based indexing in the list of ALL mesages."""
+        self.write("AT+CMGD={:d}".format(index + 1))
+        return self.read_status("Deleting message")
+
+    
+    def delete_read_sms():
+        """ Delete all messages except unread. Including drafts. """
+        self.write("AT+CMGD=1,3")
+        return self.read_status("Deleting message")
