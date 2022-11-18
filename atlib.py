@@ -34,7 +34,6 @@ class AT_Device:
     """ Base class for all device with AT commands. 
     For higher level GSM features, use GSM_Device."""
 
-
     def __init__(self, path, baudrate=9600):
         """ Open AT device. Nothing else."""
         self.serial = Serial(path, timeout=0.5, baudrate=baudrate)
@@ -44,7 +43,7 @@ class AT_Device:
     def __del__(self):
         """ Close AT device. """
         self.serial.close()
-       
+
 
     def write(self, cmd):
         """ Write a single line to the serial port. """
@@ -89,24 +88,28 @@ class AT_Device:
         return final_table
 
 
-    def read(self, timeout=20, stopterm=""):
+    def read(self, timeout=10, stopterm=""):
         """ Read a single whole response from an AT command.
         Returns a list of tokens for parsing. """
         resp = ""
-        wait = 0
+        start_time = time()
         delay = 0.01
         while True:
             avail = self.serial.in_waiting
             if(avail > 0):
                 # Read bytes and check if terminator is contained.
-                resp += self.serial.read(avail).decode("utf-8")
+                # If it is not a utf-8 string, return error.
+                try:
+                    resp += self.serial.read(avail).decode("utf-8")
+                except:
+                    return [ resp, Status.ERROR ] 
                 if AT_Device.has_terminator(resp, stopterm):
                     table = AT_Device.tokenize_response(resp)
                     return table
-            sleep(delay)
-            wait += delay
-            if wait > timeout:
+
+            if time() - start_time > timeout:
                 return [ resp, Status.TIMEOUT ]
+            sleep(delay)
 
 
     def read_status(self, msg=""):
@@ -117,17 +120,22 @@ class AT_Device:
         return status
 
 
-    def sync_baudrate(self):
+    def sync_baudrate(self, retry=True):
         """ Synchronize the device baudrate to the port. 
         You should always call this first. Returns status."""
-        print("Performing baudrate synchronization")
+        print("Performing baudrate sync, retry={:s}".format(str(retry)))
         # Write AT and test whether received OK response.
         # A broken serial port will not reply.
-        self.write("AT")
-        status = self.read_status("Synchronizing baudrate")
-        if status == Status.OK:
-            print("Succesful")
-        return status
+        while True:
+            self.write("AT")
+            status = self.read(timeout=5)[-1]
+            if status == Status.OK:
+                print("Succesful")
+                return status
+            elif retry:
+                print("-> Retrying")
+            else:
+                print("Failure")
 
 
 class GSM_Device(AT_Device):
@@ -139,7 +147,8 @@ class GSM_Device(AT_Device):
         """ Open GSM Device. Device sim still needs to be unlocked. """
         print("Opening GSM device")
         super().__init__(path)
-        self.sync_baudrate()
+        while self.sync_baudrate() != Status.OK:
+            sleep(1)
 
 
     def reboot(self):
@@ -209,7 +218,7 @@ class GSM_Device(AT_Device):
         if status != Status.OK: return status
 
         # Read the messages.
-        self.write("AT+CMGL=\"{:s}\"".format(category))
+        self.write("AT+CMGL=\"{:s}\"".format(group))
         resp = self.read()
         if resp[-1] != Status.OK: return resp[-1]
 
@@ -226,8 +235,6 @@ class GSM_Device(AT_Device):
             time = header[5].split("+")[0]
             el = [sender, date, time, message]
             table.append(el)
-
-        print("Received {:d} messages".format(len(table)))
         return table
 
 
@@ -244,14 +251,14 @@ class GSM_Device(AT_Device):
                 return []
 
 
-    def delete_sms(index):
+    def delete_sms(self, index):
         """ Delete sms at index from given group. 
         Indices are 0-based indexing in the list of ALL mesages."""
         self.write("AT+CMGD={:d}".format(index + 1))
         return self.read_status("Deleting message")
 
     
-    def delete_read_sms():
+    def delete_read_sms(self):
         """ Delete all messages except unread. Including drafts. """
         self.write("AT+CMGD=1,3")
         return self.read_status("Deleting message")
