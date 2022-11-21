@@ -4,6 +4,9 @@ Python library for sending and receiving SMS texts using AT commands. Higher and
 The API is relatively straightforward. The API is not asynchronous meaning all methods return the result directly.
 Take a look at [atlib.py](/atlib.py) for the full library.
 
+For an application of this library, see [gsm-agent](https://github.com/swordstrike1/gsm-agent). Where SMS messages can
+used to run shell scripts on a server (with security checks & registration).
+
 # API
 
 The API features two classes for interfacing with the GSM modem. 
