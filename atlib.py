@@ -49,12 +49,14 @@ class AT_Device:
         """ Write a single line to the serial port. """
         encoded = (cmd + "\r\n").encode()
         self.serial.write(encoded)
+        print("WRITE:", cmd)
         return Status.OK
 
 
     def write_ctrlz(self):
         """ Write the terminating CTRL-Z to end a prompt. """
         self.serial.write(bytes([26]))
+        print("WRITE: Ctrl-Z")
         return Status.OK
 
 
@@ -102,13 +104,16 @@ class AT_Device:
                 try:
                     resp += self.serial.read(avail).decode("utf-8")
                 except:
+                    print("READ:", resp)
                     return [ resp, Status.ERROR ] 
                 if AT_Device.has_terminator(resp, stopterm):
+                    print("READ:", resp)
                     table = AT_Device.tokenize_response(resp)
                     return table
 
             if time() - start_time > timeout:
                 return [ resp, Status.TIMEOUT ]
+                print("READ:", resp)
             sleep(delay)
 
 
@@ -138,6 +143,19 @@ class AT_Device:
                 print("Failure")
 
 
+        def reset_state(self):
+            """ Ensures the state of the AT device is on par for a new environment. """
+            # Read all remaining bytes.
+            if self.serial.in_waiting > 0:
+                self.serial.read(self.serial.in_waiting)
+            # Write AT status message.
+            for i in range(0, 10):
+                self.write("AT")
+                status = self.read_status()
+                if status == Status.OK:
+                    break
+
+
 class GSM_Device(AT_Device):
     """ A class that provides higher level GSM features such
     as sending/receiving SMS and unlocking sim pin."""
@@ -160,6 +178,7 @@ class GSM_Device(AT_Device):
 
     def get_sim_status(self):
         """ Returns status of sim lock. True of locked. """
+        self.reset_state()
         self.write("AT+CPIN?")
         resp = self.read()
         if "READY" in resp[1]: return Status.OK
@@ -170,6 +189,7 @@ class GSM_Device(AT_Device):
     def unlock_sim(self, pin):
         """ Unlocks the sim card using pin. Can block for a long time.
         Returns status."""
+        self.reset_state()
         # Test whether sim is already unlocked.
         if self.get_sim_status() == Status.OK: return Status.OK
 
@@ -189,6 +209,7 @@ class GSM_Device(AT_Device):
     def send_sms(self, nr, msg):
         """ Sends a text message to specified number. 
         Returns status."""
+        self.reset_state()
         # Set text mode.
         print("Sending \"{:s}\" to {:s}.".format(msg, nr))
         self.write("AT+CMGF=1")
@@ -211,6 +232,7 @@ class GSM_Device(AT_Device):
 
     def receive_sms(self, group=SMS_Group.UNREAD):
         """ Receive text messages. See types of message from SMS_Group class. """
+        self.reset_state()
         # Read unread. After reading they will not show up here anymore!
         print("Scanning {:s} messages...".format(group))
         self.write("AT+CMGF=1")
@@ -238,27 +260,8 @@ class GSM_Device(AT_Device):
         return table
 
 
-    def await_sms(self, delay=5, timeout=100):
-        """ Block until SMS is received. Returns list of messages if any."""
-        sec = 0
-        while True:
-            table = self.receive_sms()
-            if len(table) > 0:
-                return table
-            sleep(delay)
-            sec += delay
-            if sec >= timeout:
-                return []
-
-
-    def delete_sms(self, index):
-        """ Delete sms at index from given group. 
-        Indices are 0-based indexing in the list of ALL mesages."""
-        self.write("AT+CMGD={:d}".format(index + 1))
-        return self.read_status("Deleting message")
-
-    
     def delete_read_sms(self):
         """ Delete all messages except unread. Including drafts. """
+        self.reset_state()
         self.write("AT+CMGD=1,3")
         return self.read_status("Deleting message")
