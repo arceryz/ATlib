@@ -151,10 +151,10 @@ class GSM_Device(AT_Device):
     """ A class that provides higher level GSM features such
     as sending/receiving SMS and unlocking sim pin."""
 
-    def __init__(self, path):
+    def __init__(self, path, baudrate=9600):
         """ Open GSM Device. Device sim still needs to be unlocked. """
         print("Opening GSM device")
-        super().__init__(path)
+        super().__init__(path, baudrate)
         while self.sync_baudrate() != Status.OK:
             sleep(1)
 
