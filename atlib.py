@@ -2,7 +2,7 @@
 # Allows reading and writing to an AT interface style port.
 # Writing is performed with no checks. Reading is performed with header
 # analysis based on replies and returns an array.
-# 
+#
 # Supports the basic AT commands and even prompts from AT+CMGS.
 # Implement the error handling logic in your applications.
 # Most methods return a boolean that is true if there is an error.
@@ -31,7 +31,7 @@ class Status:
 
 
 class AT_Device:
-    """ Base class for all device with AT commands. 
+    """ Base class for all device with AT commands.
     For higher level GSM features, use GSM_Device."""
 
     def __init__(self, path, baudrate=9600):
@@ -39,11 +39,9 @@ class AT_Device:
         self.serial = Serial(path, timeout=0.5, baudrate=baudrate)
         print("AT serial device opened at {:s}".format(path))
 
-    
     def __del__(self):
         """ Close AT device. """
         self.serial.close()
-
 
     def write(self, cmd):
         """ Write a single line to the serial port. """
@@ -52,13 +50,11 @@ class AT_Device:
         print("WRITE:", cmd)
         return Status.OK
 
-
     def write_ctrlz(self):
         """ Write the terminating CTRL-Z to end a prompt. """
         self.serial.write(bytes([26]))
         print("WRITE: Ctrl-Z")
         return Status.OK
-
 
     def has_terminator(response, stopterm=""):
         """ Return True if response is final. """
@@ -74,7 +70,6 @@ class AT_Device:
                 break
         return can_terminate
 
-
     def tokenize_response(response):
         """ Chop a response in pieces for parsing. """
         # First split by newline.
@@ -88,7 +83,6 @@ class AT_Device:
             if el != "":
                 final_table.append(el)
         return final_table
-
 
     def read(self, timeout=10, stopterm=""):
         """ Read a single whole response from an AT command.
@@ -105,7 +99,7 @@ class AT_Device:
                     resp += self.serial.read(avail).decode("utf-8")
                 except:
                     print("READ:", resp)
-                    return [ resp, Status.ERROR ] 
+                    return [ resp, Status.ERROR ]
                 if AT_Device.has_terminator(resp, stopterm):
                     print("READ:", resp)
                     table = AT_Device.tokenize_response(resp)
@@ -116,7 +110,6 @@ class AT_Device:
                 print("READ:", resp)
             sleep(delay)
 
-
     def read_status(self, msg=""):
         """ Returns status of latest response. """
         status = self.read()[-1]
@@ -124,9 +117,8 @@ class AT_Device:
             print("{:s}: {:s}".format(status, msg))
         return status
 
-
     def sync_baudrate(self, retry=True):
-        """ Synchronize the device baudrate to the port. 
+        """ Synchronize the device baudrate to the port.
         You should always call this first. Returns status."""
         print("Performing baudrate sync, retry={:s}".format(str(retry)))
         # Write AT and test whether received OK response.
@@ -142,24 +134,22 @@ class AT_Device:
             else:
                 print("Failure")
 
-
-        def reset_state(self):
-            """ Ensures the state of the AT device is on par for a new environment. """
-            # Read all remaining bytes.
-            if self.serial.in_waiting > 0:
-                self.serial.read(self.serial.in_waiting)
-            # Write AT status message.
-            for i in range(0, 10):
-                self.write("AT")
-                status = self.read_status()
-                if status == Status.OK:
-                    break
+    def reset_state(self):
+        """ Ensures the state of the AT device is on par for a new environment. """
+        # Read all remaining bytes.
+        if self.serial.in_waiting > 0:
+            self.serial.read(self.serial.in_waiting)
+        # Write AT status message.
+        for i in range(0, 10):
+            self.write("AT")
+            status = self.read_status()
+            if status == Status.OK:
+                break
 
 
 class GSM_Device(AT_Device):
     """ A class that provides higher level GSM features such
     as sending/receiving SMS and unlocking sim pin."""
-
 
     def __init__(self, path):
         """ Open GSM Device. Device sim still needs to be unlocked. """
@@ -168,13 +158,11 @@ class GSM_Device(AT_Device):
         while self.sync_baudrate() != Status.OK:
             sleep(1)
 
-
     def reboot(self):
         """ Reboot the GSM device. Returns status. """
         print("Rebooting GSM device")
         self.write("AT+CFUN=1,1")
         return self.read_status("Rebooting")
-
 
     def get_sim_status(self):
         """ Returns status of sim lock. True of locked. """
@@ -184,7 +172,6 @@ class GSM_Device(AT_Device):
         if "READY" in resp[1]: return Status.OK
         if "SIM PUK" in resp[1]: return Status.ERROR_SIM_PUK
         return Status.UNKNOWN
-
 
     def unlock_sim(self, pin):
         """ Unlocks the sim card using pin. Can block for a long time.
@@ -205,9 +192,8 @@ class GSM_Device(AT_Device):
         print("Sim unlocked")
         return Status.OK
 
-
     def send_sms(self, nr, msg):
-        """ Sends a text message to specified number. 
+        """ Sends a text message to specified number.
         Returns status."""
         self.reset_state()
         # Set text mode.
@@ -215,7 +201,7 @@ class GSM_Device(AT_Device):
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
         if status != Status.OK: return status
-       
+
         # Write message.
         self.write("AT+CMGS=\"{:s}\"".format(nr))
         status = self.read_status("Set number")
@@ -228,7 +214,6 @@ class GSM_Device(AT_Device):
 
         print("Message sent.")
         return status
-
 
     def receive_sms(self, group=SMS_Group.UNREAD):
         """ Receive text messages. See types of message from SMS_Group class. """
@@ -250,7 +235,7 @@ class GSM_Device(AT_Device):
         for i in range(1, len(resp) - 1, 2):
             header = resp[i].split(",")
             message = resp[i + 1]
-          
+
             # Extract elements and strip garbage.
             sender = header[2].replace("\"", "")
             date = header[4].replace("\"", "")
@@ -258,7 +243,6 @@ class GSM_Device(AT_Device):
             el = [sender, date, time, message]
             table.append(el)
         return table
-
 
     def delete_read_sms(self):
         """ Delete all messages except unread. Including drafts. """
