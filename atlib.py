@@ -9,8 +9,8 @@
 #
 # Written by swordstrike1.
 
-from serial import *
-from time import *
+from serial import Serial
+from time import sleep, time
 import logging
 logger = logging.getLogger(__name__)
 
