@@ -61,7 +61,7 @@ class AT_Device:
     def has_terminator(response, stopterm=""):
         """ Return True if response is final. """
         # If the string ends with one of these terms, then we stop reading.
-        endterms = ["\r\nOK\r\n", "\r\nERROR\r\n", "> " ]
+        endterms = ["\r\nOK\r\n", "\r\nERROR\r\n", "> "]
 
         # We can stop reading if either an endterm is detected or
         # the stopterm is inside the string which causes immediate halt.
@@ -94,21 +94,21 @@ class AT_Device:
         delay = 0.01
         while True:
             avail = self.serial.in_waiting
-            if(avail > 0):
+            if avail > 0:
                 # Read bytes and check if terminator is contained.
                 # If it is not a utf-8 string, return error.
                 try:
                     resp += self.serial.read(avail).decode("utf-8")
                 except:
                     logger.debug("READ: {:s}".format(resp))
-                    return [ resp, Status.ERROR ]
+                    return [resp, Status.ERROR]
                 if AT_Device.has_terminator(resp, stopterm):
                     logger.debug("READ: {:s}".format(resp))
                     table = AT_Device.tokenize_response(resp)
                     return table
 
             if time() - start_time > timeout:
-                return [ resp, Status.TIMEOUT ]
+                return [resp, Status.TIMEOUT]
                 logger.debug("READ: {:s}".format(resp))
             sleep(delay)
 
@@ -171,8 +171,10 @@ class GSM_Device(AT_Device):
         self.reset_state()
         self.write("AT+CPIN?")
         resp = self.read()
-        if "READY" in resp[1]: return Status.OK
-        if "SIM PUK" in resp[1]: return Status.ERROR_SIM_PUK
+        if "READY" in resp[1]:
+            return Status.OK
+        if "SIM PUK" in resp[1]:
+            return Status.ERROR_SIM_PUK
         return Status.UNKNOWN
 
     def unlock_sim(self, pin):
@@ -180,13 +182,15 @@ class GSM_Device(AT_Device):
         Returns status."""
         self.reset_state()
         # Test whether sim is already unlocked.
-        if self.get_sim_status() == Status.OK: return Status.OK
+        if self.get_sim_status() == Status.OK:
+            return Status.OK
 
         # Unlock sim.
         logger.debug("Trying SIM pin={:s}".format(pin))
         self.write("AT+CPIN={:s}".format(pin))
         status = self.read_status("Setting pin")
-        if status != Status.OK: return status
+        if status != Status.OK:
+            return status
 
         # Wait until unlocked.
         logger.debug("Awaiting SMS ready status")
@@ -202,12 +206,14 @@ class GSM_Device(AT_Device):
         logger.debug("Sending \"{:s}\" to {:s}.".format(msg, nr))
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
-        if status != Status.OK: return status
+        if status != Status.OK:
+            return status
 
         # Write message.
         self.write("AT+CMGS=\"{:s}\"".format(nr))
         status = self.read_status("Set number")
-        if status != Status.PROMPT: return status
+        if status != Status.PROMPT:
+            return status
 
         self.write(msg)
         self.read()
@@ -224,12 +230,14 @@ class GSM_Device(AT_Device):
         logger.debug("Scanning {:s} messages...".format(group))
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
-        if status != Status.OK: return status
+        if status != Status.OK:
+            return status
 
         # Read the messages.
         self.write("AT+CMGL=\"{:s}\"".format(group))
         resp = self.read()
-        if resp[-1] != Status.OK: return resp[-1]
+        if resp[-1] != Status.OK:
+            return resp[-1]
 
         # TotalElements = 2 + 2 * TotalMessages.
         # First and last elements are echo/result.
