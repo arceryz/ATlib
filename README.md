@@ -9,11 +9,11 @@ used to run shell scripts on a server (with security checks & registration).
 
 # API
 
-The API features two classes for interfacing with the GSM modem. 
+The API features two classes for interfacing with the GSM modem.
 
 The low level is the AT_Device class.
 This class exposes only a synchronous API for sending AT commands and reading responses. It abstracts
-the painful process of AT commands not directly responding due to latency. Responses are detected by a 
+the painful process of AT commands not directly responding due to latency. Responses are detected by a
 terminated OK or ERROR string. The `read()` commands returns a tokenized list of the reply for easy parsing.
 - Opening serial connection.
 - Synchronizing baudrate using `sync_baudrate()` (by sending "AT" and awaiting response).
@@ -21,8 +21,8 @@ terminated OK or ERROR string. The `read()` commands returns a tokenized list of
 - Reading AT commands reliably.
 - Detecting errors.
 
-The high level is the GSM_Device class. This class inherits from AT_Device. 
-This class provides higher level features such as 
+The high level is the GSM_Device class. This class inherits from AT_Device.
+This class provides higher level features such as
 - Unlocking the device sim using pin.
 - Sending text messages.
 - Reading text messages (by category unread, all, read, etc).
@@ -31,7 +31,7 @@ This is still a w.i.p class for my personal use cases. Might be extended with ca
 
 # Contributing
 
-If you have problems with your modem, you can open issues here. I have tested all commands with 
+If you have problems with your modem, you can open issues here. I have tested all commands with
 a properly hooked up SIM800L on a Raspberry Pi Bullseye. Know that not all devices support
 all AT commands, and therefore may fail when using this library. However most devices should support
 the basics.
@@ -47,6 +47,10 @@ See below for a minimal texting application:
 # Console SMS sender using ATlib.
 
 from atlib import *
+
+# Show debug logs
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 gsm = GSM_Device("/dev/serial0")
 if gsm.is_sim_locked():
